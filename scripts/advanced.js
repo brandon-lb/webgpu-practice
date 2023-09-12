@@ -35,8 +35,8 @@ try {
 		inputBalls[i * 6 + 1] = 0; // padding
 		inputBalls[i * 6 + 2] = randomBetween(0, ctx.canvas.width, 'position.x');
 		inputBalls[i * 6 + 3] = randomBetween(0, ctx.canvas.height, 'position.y');
-		inputBalls[i * 6 + 4] = randomBetween(-100, 100, 'velocity.x');
-		inputBalls[i * 6 + 5] = randomBetween(-100, 100, 'velocity.y');
+		inputBalls[i * 6 + 4] = 1.0;randomBetween(-100, 100, 'velocity.x');
+		inputBalls[i * 6 + 5] = 1.0;randomBetween(-100, 100, 'velocity.y');
 	}
 
 
@@ -137,13 +137,13 @@ try {
 						return;
 					}
 
-					output[global_id.x].radius = 999.0;
+					// output[global_id.x].radius = 999.
 
+					let gx = global_id.x;
 
-					// Why does adding 1 here work, but adding the velocity not?
-					output[global_id.x].position = input[global_id.x].position + input[global_id.x].velocity * TIME_STEP;
-					// output[global_id.x].velocity = input[global_id.x].velocity;
+					output[gx] = input[gx];
 
+					output[gx].position = output[gx].position + output[gx].velocity;
 				}
 			`,
 	});
