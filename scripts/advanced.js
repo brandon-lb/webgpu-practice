@@ -84,7 +84,7 @@ try {
 	});
 	passEncoder.setPipeline(pipeline);
 	passEncoder.setBindGroup(0, bindGroup);
-	passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64));
+	passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64)); // Math.ceil(1000 / 64) = 16
 	passEncoder.end();
 	// ------------------------------------------------
 	// ------------------------------------------------
