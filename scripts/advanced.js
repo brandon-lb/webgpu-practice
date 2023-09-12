@@ -22,7 +22,7 @@ try {
 			binding: 0,
 			visibility: GPUShaderStage.COMPUTE,
 			buffer: {
-				type: "storage",
+				type: 'storage',
 			},
 		}],
 	});
@@ -46,10 +46,10 @@ try {
 
 
 
-
 	// ------------------------------------------------
 	// CREATE PIPELINE
 	// ------------------------------------------------
+	const entryPointName = 'main';
 	const commandEncoder = device.createCommandEncoder();
 	const passEncoder = commandEncoder.beginComputePass();
 	const module = device.createShaderModule({
@@ -58,7 +58,7 @@ try {
 				var<storage, read_write> output: array<f32>;
 
 				@compute @workgroup_size(64)
-				fn main(
+				fn ${entryPointName}(
 
 				@builtin(global_invocation_id)
 				global_id : vec3<u32>,
@@ -79,7 +79,7 @@ try {
 		}),
 		compute: {
 			module,
-			entryPoint: "main",
+			entryPoint: entryPointName,
 		},
 	});
 	passEncoder.setPipeline(pipeline);
