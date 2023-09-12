@@ -1,6 +1,9 @@
 
 // Following https://surma.dev/things/webgpu/
 
+const canvasEl = document.getElementById('advanced-canvas');
+const outputEl = document.getElementById('errors-advanced');
+
 try {
 	if (!navigator.gpu) throw Error("WebGPU not supported.");
 
@@ -11,8 +14,6 @@ try {
 	if (!device) throw Error("Couldn’t request WebGPU logical device.");
 
 
-	const canvasEl = document.getElementById('advanced-canvas');
-	const outputEl = document.getElementById('errors-advanced')
 	const ctx = canvasEl.getContext('2d');
 
 	canvasEl.width = document.body.clientWidth;
@@ -26,13 +27,13 @@ try {
 
 		label = label ? label + ' returning' : 'Returning';
 
-		console.log(label + ` ${val} for lower:${lower}, upper:${upper}`);
+		// console.log(label + ` ${val} for lower:${lower}, upper:${upper}`);
 
 		return val;
 	}
 
-	const NUM_BALLS = 256;
-	const BUFFER_SIZE = 1000;
+	const NUM_BALLS = 1000;
+	const BUFFER_SIZE = NUM_BALLS * 6 * Float32Array.BYTES_PER_ELEMENT;
 
 	let inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
 	for (let i = 0; i < NUM_BALLS; i++) {
@@ -40,8 +41,8 @@ try {
 		inputBalls[i * 6 + 1] = 0; // padding
 		inputBalls[i * 6 + 2] = randomBetween(0, ctx.canvas.width, 'position.x');
 		inputBalls[i * 6 + 3] = randomBetween(0, ctx.canvas.height, 'position.y');
-		inputBalls[i * 6 + 4] = 1.0;randomBetween(-100, 100, 'velocity.x');
-		inputBalls[i * 6 + 5] = 1.0;randomBetween(-100, 100, 'velocity.y');
+		inputBalls[i * 6 + 4] = randomBetween(-1, 1, 'velocity.x');
+		inputBalls[i * 6 + 5] = randomBetween(-1, 1, 'velocity.y');
 	}
 
 
