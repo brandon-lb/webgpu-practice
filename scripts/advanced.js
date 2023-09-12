@@ -11,18 +11,19 @@ try {
 	if (!device) throw Error("Couldn’t request WebGPU logical device.");
 
 
-
-	const ctx = document.getElementById('advanced-canvas').getContext('2d');
+	const canvas = document.getElementById('advanced-canvas');
+	const ctx = canvas.getContext('2d');
 
 	function randomBetween(lower, upper) {
-		return Math.random() * upper + lower;
+		const range = upper - lower;
+		return Math.random() * range + lower;
 	}
 
 
-	const NUM_BALLS = 32;
+	const NUM_BALLS = 1;
 	const BUFFER_SIZE = 1000;
 
-	const inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
+	let inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
 	for (let i = 0; i < NUM_BALLS; i++) {
 		inputBalls[i * 6 + 0] = randomBetween(2, 10); // radius
 		inputBalls[i * 6 + 1] = 0; // padding
@@ -130,9 +131,7 @@ try {
 						return;
 					}
 
-					output[global_id.x].position =
-						input[global_id.x].position +
-						input[global_id.x].velocity * TIME_STEP;
+					output[global_id.x].position = input[global_id.x].position + input[global_id.x].velocity * TIME_STEP;
 				}
 			`,
 	});
@@ -180,6 +179,8 @@ try {
 		device.queue.submit([commands]);
 
 
+
+
 		return stagingGPUBuffer.mapAsync(
 			GPUMapMode.READ,
 			0, // Offset
@@ -192,14 +193,19 @@ try {
 
 			const copyArrayBuffer = stagingGPUBuffer.getMappedRange(0, BUFFER_SIZE);
 
+
 			// Really, another copy? (From tutorial) Don't think this is necessary...
-			const data = copyArrayBuffer.slice(0); // Clone array
+			const newData = copyArrayBuffer.slice(0); // Clone array
 
 			stagingGPUBuffer.unmap();
 
-			// ANOTHER copy? Actually, I don't think it copies it, I think it's just a wrapper
-			console.log(new Float32Array(data));
+			const newBalls = new Float32Array(newData);
 
+
+			console.log(newBalls);
+
+			// Feedback
+			inputBalls = newBalls;
 		});
 	}
 
@@ -208,7 +214,7 @@ try {
 	let lastPerformanceNow = performance.now();
 	function run () {
 		window.requestAnimationFrame(() => {
-			console.log(performance.now() - lastPerformanceNow);
+			// console.log(performance.now() - lastPerformanceNow);
 
 			// Hey ChatGPT, I want to put frame() here, but when I do, it complains about the fact that I apparently
 			// can't submit multiple times, plus a mapAsync is already in progress?
@@ -216,7 +222,14 @@ try {
 			// Also do I need to feed the data back into the ball program?
 
 			lastPerformanceNow = performance.now();
-			computeFrame().then(run);
+			computeFrame().then(() => {
+
+				ctx.fillStyle = 'black';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+				run();
+			});
 		});
 	}
 
