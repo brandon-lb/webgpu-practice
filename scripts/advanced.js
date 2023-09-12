@@ -19,9 +19,8 @@ try {
 	}
 
 
-
+	const NUM_BALLS = 32;
 	const BUFFER_SIZE = 1000;
-	const NUM_BALLS = 512;
 
 	const inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
 	for (let i = 0; i < NUM_BALLS; i++) {
@@ -34,19 +33,13 @@ try {
 	}
 
 
-
-
-
-
 	// ------------------------------------------------
 	// CREATE BIND GROUP + LAYOUT
 	// ------------------------------------------------
 
 	// Create buffers
-
-
 	const inputGPUBuffer = device.createBuffer({
-		size: NUM_BALLS,
+		size: BUFFER_SIZE,
 		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 	})
 
@@ -101,8 +94,7 @@ try {
 	// CREATE PIPELINE
 	// ------------------------------------------------
 	const entryPointName = 'main';
-	const commandEncoder = device.createCommandEncoder();
-	const passEncoder = commandEncoder.beginComputePass();
+	const workGroupSize = 64;
 	const module = device.createShaderModule({
 		code: `
 
@@ -120,7 +112,7 @@ try {
 
 				const TIME_STEP: f32 = 0.016;
 
-				@compute @workgroup_size(64)
+				@compute @workgroup_size(${workGroupSize})
 				fn ${entryPointName}(
 
 				@builtin(global_invocation_id)
@@ -154,66 +146,82 @@ try {
 			entryPoint: entryPointName,
 		},
 	});
-	passEncoder.setPipeline(pipeline);
-	passEncoder.setBindGroup(0, bindGroup);
-	passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / 64)); // Math.ceil(1000 / 64) = 16
-	passEncoder.end();
-	// ------------------------------------------------
-	// ------------------------------------------------
 
 
 
 
-	// ------------------------------------------------
-	// STAGING BUFFER AND FINISH PIPELINE
-	// ------------------------------------------------
-
-	// Staging buffer doesn't need to be put into a bind group, interesting
-	const stagingGPUBuffer = device.createBuffer({
-		size: BUFFER_SIZE,
-		usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-	});
-
-	commandEncoder.copyBufferToBuffer(
-		outputGPUBuffer,
-		0, // Source offset
-		stagingGPUBuffer,
-		0, // Destination offset,
-		BUFFER_SIZE
-	);
-	const commands = commandEncoder.finish();
-	// ------------------------------------------------
-	// Why do even need a staging buffer? Try copying output buffer directly
-	// ------------------------------------------------
 
 
 
+	function computeFrame() {
 
-	// ------------------------------------------------
-	// START COMPUTE AND COPY
-	// ------------------------------------------------
-	device.queue.submit([commands]);
+		const commandEncoder = device.createCommandEncoder();
+		const passEncoder = commandEncoder.beginComputePass();
+		passEncoder.setPipeline(pipeline);
+		passEncoder.setBindGroup(0, bindGroup);
+		passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / workGroupSize)); // Math.ceil(1000 / 64) = 16
+		passEncoder.end();
 
-	stagingGPUBuffer.mapAsync(
-		GPUMapMode.READ,
-		0, // Offset
-		BUFFER_SIZE // Length
-	).then(() => {
+		const stagingGPUBuffer = device.createBuffer({
+			size: BUFFER_SIZE,
+			usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+		});
 
-		// https://developer.mozilla.org/en-US/docs/Web/API/GPUBuffer
-		// This won't work! Implicit GPU buffer types? Yuck!
-		// const copyArrayBuffer = outputGPUBuffer.getMappedRange(0, BUFFER_SIZE);
+		commandEncoder.copyBufferToBuffer(
+			outputGPUBuffer,
+			0, // Source offset
+			stagingGPUBuffer,
+			0, // Destination offset,
+			BUFFER_SIZE
+		);
+		const commands = commandEncoder.finish();
 
-		const copyArrayBuffer = stagingGPUBuffer.getMappedRange(0, BUFFER_SIZE);
+		device.queue.writeBuffer(inputGPUBuffer, 0, inputBalls);
+		device.queue.submit([commands]);
 
-		// Really, another copy? (From tutorial) Don't think this is necessary...
-		const data = copyArrayBuffer.slice(0); // Clone array
 
-		stagingGPUBuffer.unmap();
+		return stagingGPUBuffer.mapAsync(
+			GPUMapMode.READ,
+			0, // Offset
+			BUFFER_SIZE // Length
+		).then(() => {
 
-		// ANOTHER copy? Actually, I don't think it copies it, I think it's just a wrapper
-		console.log(new Float32Array(data));
-	});
+			// https://developer.mozilla.org/en-US/docs/Web/API/GPUBuffer
+			// This won't work! Implicit GPU buffer types? Yuck!
+			// const copyArrayBuffer = outputGPUBuffer.getMappedRange(0, BUFFER_SIZE);
+
+			const copyArrayBuffer = stagingGPUBuffer.getMappedRange(0, BUFFER_SIZE);
+
+			// Really, another copy? (From tutorial) Don't think this is necessary...
+			const data = copyArrayBuffer.slice(0); // Clone array
+
+			stagingGPUBuffer.unmap();
+
+			// ANOTHER copy? Actually, I don't think it copies it, I think it's just a wrapper
+			console.log(new Float32Array(data));
+
+		});
+	}
+
+
+
+	let lastPerformanceNow = performance.now();
+	function run () {
+		window.requestAnimationFrame(() => {
+			console.log(performance.now() - lastPerformanceNow);
+
+			// Hey ChatGPT, I want to put frame() here, but when I do, it complains about the fact that I apparently
+			// can't submit multiple times, plus a mapAsync is already in progress?
+
+			// Also do I need to feed the data back into the ball program?
+
+			lastPerformanceNow = performance.now();
+			computeFrame().then(run);
+		});
+	}
+
+	run();
+
 
 } catch (e) {
 	document.getElementById('errors-advanced').textContent = e;
