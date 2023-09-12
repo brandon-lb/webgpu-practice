@@ -25,6 +25,8 @@ try {
 		return val;
 	}
 
+	const Scene = new Float32Array([canvas.width, canvas.height]);
+
 
 	const NUM_BALLS = 256;
 	const BUFFER_SIZE = 1000;
@@ -55,6 +57,12 @@ try {
 		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
 	});
 
+	// Can use uniform? Or can _just_ use GPUBufferUsage.READ? Easier way to do this lol?
+	const sceneGPUBuffer = device.createBuffer({
+		size: 2 * Float32Array.BYTES_PER_ELEMENT,
+		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+	});
+
 
 	// Create bind group + layout
 	const bindGroupLayout = device.createBindGroupLayout({
@@ -73,6 +81,13 @@ try {
 					type: 'storage',
 				},
 			},
+			{
+				binding: 2,
+				visibility: GPUShaderStage.COMPUTE,
+				buffer: {
+					type: 'read-only-storage',
+				},
+			},
 		],
 	});
 	const bindGroup = device.createBindGroup({
@@ -88,6 +103,12 @@ try {
 				binding: 1,
 				resource: {
 					buffer: outputGPUBuffer,
+				},
+			},
+			{
+				binding: 2,
+				resource: {
+					buffer: sceneGPUBuffer,
 				},
 			},
 		],
@@ -110,11 +131,19 @@ try {
 					velocity: vec2<f32>,
 				}
 
+				struct Scene {
+					width: f32, // No overloader for u32 x f32?...
+					height: f32,
+				}
+
 				@group(0) @binding(0)
 				var<storage, read> input: array<Ball>;
 
 				@group(0) @binding(1)
 				var<storage, read_write> output: array<Ball>;
+
+				@group(0) @binding(2)
+				var<storage, read> scene: Scene;
 
 				const TIME_STEP: f32 = 0.016;
 
@@ -140,6 +169,10 @@ try {
 					output[gx] = input[gx];
 
 					output[gx].position = output[gx].position + output[gx].velocity;
+
+					if (output[gx].position.x > scene.width || output[gx].position.x < 0 || output[gx].position.y > scene.width || output[gx].position.y < 0) {
+						output[gx].velocity *= -1.0;
+					}
 				}
 			`,
 	});
@@ -185,6 +218,7 @@ try {
 		const commands = commandEncoder.finish();
 
 		device.queue.writeBuffer(inputGPUBuffer, 0, inputBalls);
+		device.queue.writeBuffer(sceneGPUBuffer, 0, Scene);
 		device.queue.submit([commands]);
 
 
