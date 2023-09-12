@@ -16,7 +16,16 @@ try {
 	// ------------------------------------------------
 	// CREATE BIND GROUP + LAYOUT
 	// ------------------------------------------------
+
+	// Create buffer
 	const BUFFER_SIZE = 1000;
+	const outputGPUBuffer = device.createBuffer({
+		size: BUFFER_SIZE,
+		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
+	});
+
+
+	// Create bind group + layout
 	const bindGroupLayout = device.createBindGroupLayout({
 		entries: [{
 			binding: 0,
@@ -26,12 +35,6 @@ try {
 			},
 		}],
 	});
-
-	const outputGPUBuffer = device.createBuffer({
-		size: BUFFER_SIZE,
-		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
-	});
-
 	const bindGroup = device.createBindGroup({
 		layout: bindGroupLayout,
 		entries: [{
