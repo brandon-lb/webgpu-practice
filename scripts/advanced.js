@@ -19,7 +19,7 @@ try {
 	const BUFFER_SIZE = 1000;
 	const bindGroupLayout = device.createBindGroupLayout({
 		entries: [{
-			binding: 1,
+			binding: 0,
 			visibility: GPUShaderStage.COMPUTE,
 			buffer: {
 				type: "storage",
@@ -35,7 +35,7 @@ try {
 	const bindGroup = device.createBindGroup({
 		layout: bindGroupLayout,
 		entries: [{
-			binding: 1,
+			binding: 0,
 			resource: {
 				buffer: outputGPUBuffer,
 			},
@@ -54,7 +54,7 @@ try {
 	const passEncoder = commandEncoder.beginComputePass();
 	const module = device.createShaderModule({
 		code: `
-				@group(0) @binding(1)
+				@group(0) @binding(0)
 				var<storage, read_write> output: array<f32>;
 
 				@compute @workgroup_size(64)
