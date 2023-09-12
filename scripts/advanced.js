@@ -61,10 +61,10 @@ try {
 		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
 	});
 
-	// Can use uniform? Or can _just_ use GPUBufferUsage.READ? Easier way to do this lol?
+	// Can use uniform? Easier way to do this lol?
 	const sceneGPUBuffer = device.createBuffer({
 		size: 2 * Float32Array.BYTES_PER_ELEMENT,
-		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 	});
 
 	const stagingGPUBuffer = device.createBuffer({
@@ -290,11 +290,6 @@ try {
 	}
 
 	run();
-
-	// setInterval(() => {
-	// 	computeFrame();
-	// }, 1000);
-
 
 } catch (e) {
 	outputEl.textContent = e;
