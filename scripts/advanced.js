@@ -26,7 +26,7 @@ try {
 	}
 
 
-	const NUM_BALLS = 2;
+	const NUM_BALLS = 256;
 	const BUFFER_SIZE = 1000;
 
 	let inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
@@ -104,7 +104,6 @@ try {
 	const workGroupSize = 64;
 	const module = device.createShaderModule({
 		code: `
-
 				struct Ball {
 					radius: f32,
 					position: vec2<f32>,
@@ -131,13 +130,10 @@ try {
 				)
 
 				{
-
 					let num_balls = arrayLength(&output);
 					if(global_id.x >= num_balls) {
 						return;
 					}
-
-					// output[global_id.x].radius = 999.
 
 					let gx = global_id.x;
 
@@ -163,8 +159,9 @@ try {
 
 
 
-
+	let lastPerf = 0;
 	function computeFrame() {
+		const computeFrameStart = performance.now();
 
 		const commandEncoder = device.createCommandEncoder();
 		const passEncoder = commandEncoder.beginComputePass();
@@ -191,7 +188,6 @@ try {
 		device.queue.submit([commands]);
 
 
-
 		return stagingGPUBuffer.mapAsync(
 			GPUMapMode.READ,
 			0, // Offset
@@ -213,10 +209,13 @@ try {
 			const newBalls = new Float32Array(newData);
 
 
-			console.log(newBalls);
+			// console.log(newBalls);
 
 			// Feedback
 			inputBalls = newBalls;
+
+			const computeFrameEnd = performance.now();
+			lastPerf = computeFrameEnd - computeFrameStart;
 		});
 	}
 
@@ -226,6 +225,7 @@ try {
 	function run () {
 		window.requestAnimationFrame(() => {
 			// console.log(performance.now() - lastPerformanceNow);
+			document.getElementById('errors-advanced').textContent = lastPerf.toFixed(2) + 'ms';
 
 			// Hey ChatGPT, I want to put frame() here, but when I do, it complains about the fact that I apparently
 			// can't submit multiple times, plus a mapAsync is already in progress?
@@ -237,18 +237,26 @@ try {
 
 				ctx.fillStyle = 'black';
 				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.fillStyle = 'white';
 
+
+				for (let i = 0; i < NUM_BALLS; i ++) {
+					const r = inputBalls[i * 6 + 0] / 2;
+					const x = inputBalls[i * 6 + 2];
+					const y = inputBalls[i * 6 + 3];
+					ctx.fillRect(x, y, r, r);
+				}
 
 				run();
 			});
 		});
 	}
 
-	// run();
+	run();
 
-	setInterval(() => {
-		computeFrame();
-	}, 1000);
+	// setInterval(() => {
+	// 	computeFrame();
+	// }, 1000);
 
 
 } catch (e) {
