@@ -70,9 +70,14 @@ try {
 
 	const commandEncoder = device.createCommandEncoder();
 	const passEncoder = commandEncoder.beginComputePass();
+
+
 	passEncoder.setPipeline(pipeline);
-	passEncoder.dispatchWorkgroups(1);
+	passEncoder.setBindGroup(0, bindGroup);
+	passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE/64));
 	passEncoder.end();
+
+
 	const commands = commandEncoder.finish();
 	device.queue.submit([commands]);
 
