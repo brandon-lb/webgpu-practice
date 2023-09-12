@@ -11,8 +11,14 @@ try {
 	if (!device) throw Error("Couldn’t request WebGPU logical device.");
 
 
-	const canvas = document.getElementById('advanced-canvas');
-	const ctx = canvas.getContext('2d');
+	const canvasEl = document.getElementById('advanced-canvas');
+	const outputEl = document.getElementById('errors-advanced')
+	const ctx = canvasEl.getContext('2d');
+
+	canvasEl.width = document.body.clientWidth;
+	canvasEl.height = document.body.clientHeight;
+
+	const SceneData = new Float32Array([canvasEl.width, canvasEl.height]);
 
 	function randomBetween(lower, upper, label) {
 		const range = upper - lower;
@@ -24,9 +30,6 @@ try {
 
 		return val;
 	}
-
-	const SceneData = new Float32Array([canvas.width, canvas.height]);
-
 
 	const NUM_BALLS = 256;
 	const BUFFER_SIZE = 1000;
@@ -175,8 +178,12 @@ try {
 
 					output[gx].position = output[gx].position + output[gx].velocity;
 
-					if (output[gx].position.x > scene.width || output[gx].position.x < 0 || output[gx].position.y > scene.width || output[gx].position.y < 0) {
-						output[gx].velocity *= -1.0;
+					if (output[gx].position.x > scene.width || output[gx].position.x < 0) {
+						output[gx].velocity.x *= -1.0;
+					}
+
+					if (output[gx].position.y > scene.height || output[gx].position.y < 0) {
+						output[gx].velocity.y *= -1.0;
 					}
 				}
 			`,
@@ -254,7 +261,7 @@ try {
 	function run () {
 		window.requestAnimationFrame(() => {
 			// console.log(performance.now() - lastPerformanceNow);
-			document.getElementById('errors-advanced').textContent = lastPerf.toFixed(2) + 'ms';
+			outputEl.textContent = lastPerf.toFixed(2) + 'ms';
 
 			// Hey ChatGPT, I want to put frame() here, but when I do, it complains about the fact that I apparently
 			// can't submit multiple times, plus a mapAsync is already in progress?
@@ -265,7 +272,7 @@ try {
 			computeFrame().then(() => {
 
 				ctx.fillStyle = 'black';
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
 				ctx.fillStyle = 'white';
 
 
@@ -289,6 +296,6 @@ try {
 
 
 } catch (e) {
-	document.getElementById('errors-advanced').textContent = e;
+	outputEl.textContent = e;
 	throw e;
 }
