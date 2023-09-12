@@ -77,9 +77,34 @@ try {
 	passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE/64));
 	passEncoder.end();
 
+	commandEncoder.copyBufferToBuffer(
+		output,
+		0, // Source offset
+		stagingBuffer,
+		0, // Destination offset,
+		BUFFER_SIZE
+	);
+
 
 	const commands = commandEncoder.finish();
 	device.queue.submit([commands]);
+
+
+
+	stagingBuffer.mapAsync(
+		GPUMapMode.READ,
+		0, // Offset
+		BUFFER_SIZE // Length
+	).then(() => {
+		const copyArrayBuffer = stagingBuffer.getMappedRange(0, BUFFER_SIZE);
+
+		const data = copyArrayBuffer.slice(0); // Clone array
+
+		stagingBuffer.unmap();
+
+		console.log(new Float32Array(data));
+
+	});
 
 
 } catch (e) {
