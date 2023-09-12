@@ -95,6 +95,8 @@ try {
 	// ------------------------------------------------
 	// STAGING BUFFER AND FINISH PIPELINE
 	// ------------------------------------------------
+
+	// Staging buffer doesn't need to be put into a bind group, interesting
 	const stagingGPUBuffer = device.createBuffer({
 		size: BUFFER_SIZE,
 		usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
