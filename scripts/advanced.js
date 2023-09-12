@@ -14,23 +14,29 @@ try {
 	const canvas = document.getElementById('advanced-canvas');
 	const ctx = canvas.getContext('2d');
 
-	function randomBetween(lower, upper) {
+	function randomBetween(lower, upper, label) {
 		const range = upper - lower;
-		return Math.random() * range + lower;
+		const val = Math.random() * range + lower;
+
+		label = label ? label + ' returning' : 'Returning';
+
+		console.log(label + ` ${val} for lower:${lower}, upper:${upper}`);
+
+		return val;
 	}
 
 
-	const NUM_BALLS = 1;
+	const NUM_BALLS = 2;
 	const BUFFER_SIZE = 1000;
 
 	let inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
 	for (let i = 0; i < NUM_BALLS; i++) {
-		inputBalls[i * 6 + 0] = randomBetween(2, 10); // radius
+		inputBalls[i * 6 + 0] = randomBetween(2, 10, 'radius');
 		inputBalls[i * 6 + 1] = 0; // padding
-		inputBalls[i * 6 + 2] = randomBetween(0, ctx.canvas.width); // position.x
-		inputBalls[i * 6 + 3] = randomBetween(0, ctx.canvas.height); // position.y
-		inputBalls[i * 6 + 4] = randomBetween(-100, 100); // velocity.x
-		inputBalls[i * 6 + 5] = randomBetween(-100, 100); // velocity.y
+		inputBalls[i * 6 + 2] = randomBetween(0, ctx.canvas.width, 'position.x');
+		inputBalls[i * 6 + 3] = randomBetween(0, ctx.canvas.height, 'position.y');
+		inputBalls[i * 6 + 4] = randomBetween(-100, 100, 'velocity.x');
+		inputBalls[i * 6 + 5] = randomBetween(-100, 100, 'velocity.y');
 	}
 
 
@@ -131,7 +137,13 @@ try {
 						return;
 					}
 
+					output[global_id.x].radius = 999.0;
+
+
+					// Why does adding 1 here work, but adding the velocity not?
 					output[global_id.x].position = input[global_id.x].position + input[global_id.x].velocity * TIME_STEP;
+					// output[global_id.x].velocity = input[global_id.x].velocity;
+
 				}
 			`,
 	});
@@ -177,7 +189,6 @@ try {
 
 		device.queue.writeBuffer(inputGPUBuffer, 0, inputBalls);
 		device.queue.submit([commands]);
-
 
 
 
@@ -233,7 +244,11 @@ try {
 		});
 	}
 
-	run();
+	// run();
+
+	setInterval(() => {
+		computeFrame();
+	}, 1000);
 
 
 } catch (e) {
