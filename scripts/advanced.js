@@ -12,13 +12,44 @@ try {
 
 
 
+	const ctx = document.getElementById('advanced-canvas').getContext('2d');
+
+	function randomBetween(lower, upper) {
+		return Math.random() * upper + lower;
+	}
+
+
+
+	const BUFFER_SIZE = 1000;
+	const NUM_BALLS = 512;
+
+	const inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
+	for (let i = 0; i < NUM_BALLS; i++) {
+		inputBalls[i * 6 + 0] = randomBetween(2, 10); // radius
+		inputBalls[i * 6 + 1] = 0; // padding
+		inputBalls[i * 6 + 2] = randomBetween(0, ctx.canvas.width); // position.x
+		inputBalls[i * 6 + 3] = randomBetween(0, ctx.canvas.height); // position.y
+		inputBalls[i * 6 + 4] = randomBetween(-100, 100); // velocity.x
+		inputBalls[i * 6 + 5] = randomBetween(-100, 100); // velocity.y
+	}
+
+
+
+
+
 
 	// ------------------------------------------------
 	// CREATE BIND GROUP + LAYOUT
 	// ------------------------------------------------
 
-	// Create buffer
-	const BUFFER_SIZE = 1000;
+	// Create buffers
+
+
+	const inputGPUBuffer = device.createBuffer({
+		size: NUM_BALLS,
+		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+	})
+
 	const outputGPUBuffer = device.createBuffer({
 		size: BUFFER_SIZE,
 		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
@@ -27,22 +58,39 @@ try {
 
 	// Create bind group + layout
 	const bindGroupLayout = device.createBindGroupLayout({
-		entries: [{
-			binding: 0,
-			visibility: GPUShaderStage.COMPUTE,
-			buffer: {
-				type: 'storage',
+		entries: [
+			{
+				binding: 0,
+				visibility: GPUShaderStage.COMPUTE,
+				buffer: {
+					type: 'read-only-storage',
+				},
 			},
-		}],
+			{
+				binding: 1,
+				visibility: GPUShaderStage.COMPUTE,
+				buffer: {
+					type: 'storage',
+				},
+			},
+		],
 	});
 	const bindGroup = device.createBindGroup({
 		layout: bindGroupLayout,
-		entries: [{
-			binding: 0,
-			resource: {
-				buffer: outputGPUBuffer,
+		entries: [
+			{
+				binding: 0,
+				resource: {
+					buffer: inputGPUBuffer,
+				}
 			},
-		}],
+			{
+				binding: 1,
+				resource: {
+					buffer: outputGPUBuffer,
+				},
+			},
+		],
 	});
 	// ------------------------------------------------
 	// ------------------------------------------------
@@ -57,8 +105,20 @@ try {
 	const passEncoder = commandEncoder.beginComputePass();
 	const module = device.createShaderModule({
 		code: `
+
+				struct Ball {
+					radius: f32,
+					position: vec2<f32>,
+					velocity: vec2<f32>,
+				}
+
 				@group(0) @binding(0)
-				var<storage, read_write> output: array<f32>;
+				var<storage, read> input: array<Ball>;
+
+				@group(0) @binding(1)
+				var<storage, read_write> output: array<Ball>;
+
+				const TIME_STEP: f32 = 0.016;
 
 				@compute @workgroup_size(64)
 				fn ${entryPointName}(
@@ -69,9 +129,18 @@ try {
 				@builtin(local_invocation_id)
 				local_id : vec3<u32>,
 
-				) {
-				output[global_id.x] =
-					f32(global_id.x) * 1000. + f32(local_id.x);
+				)
+
+				{
+
+					let num_balls = arrayLength(&output);
+					if(global_id.x >= num_balls) {
+						return;
+					}
+
+					output[global_id.x].position =
+						input[global_id.x].position +
+						input[global_id.x].velocity * TIME_STEP;
 				}
 			`,
 	});
