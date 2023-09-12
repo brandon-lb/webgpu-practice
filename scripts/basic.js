@@ -130,6 +130,6 @@ try {
 	});
 
 } catch (e) {
-	document.getElementById("errors").textContent = e;
+	document.getElementById('errors-basic').textContent = e;
 	throw e;
 }
