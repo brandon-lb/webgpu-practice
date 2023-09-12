@@ -25,7 +25,7 @@ try {
 		return val;
 	}
 
-	const Scene = new Float32Array([canvas.width, canvas.height]);
+	const SceneData = new Float32Array([canvas.width, canvas.height]);
 
 
 	const NUM_BALLS = 256;
@@ -61,6 +61,11 @@ try {
 	const sceneGPUBuffer = device.createBuffer({
 		size: 2 * Float32Array.BYTES_PER_ELEMENT,
 		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+	});
+
+	const stagingGPUBuffer = device.createBuffer({
+		size: BUFFER_SIZE,
+		usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
 	});
 
 
@@ -188,10 +193,6 @@ try {
 	});
 
 
-
-
-
-
 	let lastPerf = 0;
 	function computeFrame() {
 		const computeFrameStart = performance.now();
@@ -203,22 +204,16 @@ try {
 		passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / workGroupSize)); // Math.ceil(1000 / 64) = 16
 		passEncoder.end();
 
-		const stagingGPUBuffer = device.createBuffer({
-			size: BUFFER_SIZE,
-			usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-		});
-
 		commandEncoder.copyBufferToBuffer(
-			outputGPUBuffer,
-			0, // Source offset
-			stagingGPUBuffer,
-			0, // Destination offset,
+			outputGPUBuffer, 0, // Source offset
+			stagingGPUBuffer, 0, // Destination offset,
 			BUFFER_SIZE
 		);
+
 		const commands = commandEncoder.finish();
 
+		device.queue.writeBuffer(sceneGPUBuffer, 0, SceneData);
 		device.queue.writeBuffer(inputGPUBuffer, 0, inputBalls);
-		device.queue.writeBuffer(sceneGPUBuffer, 0, Scene);
 		device.queue.submit([commands]);
 
 
