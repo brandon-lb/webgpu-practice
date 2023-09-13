@@ -32,7 +32,7 @@ try {
 		return val;
 	}
 
-	const NUM_BALLS = 1000;
+	const NUM_BALLS = 10;
 	const BUFFER_SIZE = NUM_BALLS * 6 * Float32Array.BYTES_PER_ELEMENT;
 
 	let inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
@@ -231,6 +231,11 @@ try {
 			BUFFER_SIZE // Length
 		).then(() => {
 
+			const mapAsyncPromiseResolved = performance.now();
+
+			console.log('mapAsync took ' + (mapAsyncPromiseResolved - computeFrameStart).toFixed(2) + 'ms');
+
+
 			// https://developer.mozilla.org/en-US/docs/Web/API/GPUBuffer
 			// This won't work! Implicit GPU buffer types? Yuck!
 			// const copyArrayBuffer = outputGPUBuffer.getMappedRange(0, BUFFER_SIZE);
@@ -252,7 +257,7 @@ try {
 			inputBalls = newBalls;
 
 			const computeFrameEnd = performance.now();
-			lastPerf = computeFrameEnd - computeFrameStart;
+
 		});
 	}
 
