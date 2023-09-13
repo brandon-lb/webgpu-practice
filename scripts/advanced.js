@@ -141,7 +141,7 @@ try {
 				}
 
 				struct Scene {
-					width: f32, // No overloader for u32 x f32?...
+					width: f32, // No overloader for u32 x f32?... And no u16?
 					height: f32,
 				}
 
