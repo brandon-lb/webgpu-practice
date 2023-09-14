@@ -14,6 +14,10 @@ try {
 	if (!device) throw Error("Couldn’t request WebGPU logical device.");
 
 
+	window.adapter = adapter;
+	window.device = device;
+
+
 	const ctx = canvasEl.getContext('2d');
 
 	canvasEl.width = document.body.clientWidth;
@@ -32,12 +36,22 @@ try {
 		return val;
 	}
 
-	const NUM_BALLS = 10;
+	const NUM_BALLS = 32;
 	const BUFFER_SIZE = NUM_BALLS * 6 * Float32Array.BYTES_PER_ELEMENT;
+
+	const workGroupDimensions = [16, 1, 1];
+
+	const workgroupCountX = 2;//Math.ceil(NUM_BALLS / workGroupDimensions[0]);
+	const workgroupCountY = 1;
+	const workgroupCountZ = 1;
+	console.log({ workgroupCountX, workgroupCountY, workgroupCountZ })
+
+
+	console.log('Buffer size: ' + BUFFER_SIZE);
 
 	let inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
 	for (let i = 0; i < NUM_BALLS; i++) {
-		inputBalls[i * 6 + 0] = randomBetween(2, 10, 'radius');
+		inputBalls[i * 6 + 0] = 5;
 		inputBalls[i * 6 + 1] = 0; // padding
 		inputBalls[i * 6 + 2] = randomBetween(0, ctx.canvas.width, 'position.x');
 		inputBalls[i * 6 + 3] = randomBetween(0, ctx.canvas.height, 'position.y');
@@ -130,9 +144,17 @@ try {
 	// ------------------------------------------------
 	// CREATE PIPELINE
 	// ------------------------------------------------
+
+	// Info:
+	// device.limits
+	// maxComputeInvocationsPerWorkgroup: 256,
+	// maxComputeWorkgroupSizeX: 256,
+  	// maxComputeWorkgroupSizeY: 256,
+  	// maxComputeWorkgroupSizeZ: 64,
+  	// maxComputeWorkgroupsPerDimension: 65535,
+
 	const entryPointName = 'main';
-	const workGroupSize = 64;
-	const module = device.createShaderModule({
+	const shaderModule = device.createShaderModule({
 		code: `
 				struct Ball {
 					radius: f32,
@@ -156,7 +178,7 @@ try {
 
 				const TIME_STEP: f32 = 0.016;
 
-				@compute @workgroup_size(${workGroupSize})
+				@compute @workgroup_size(${workGroupDimensions.toString()})
 				fn ${entryPointName}(
 
 				@builtin(global_invocation_id)
@@ -167,11 +189,29 @@ try {
 
 				)
 
+
+				// Key takeaway here is that is like a compute fragment shader. We're not using a loop, all of these
+				// invocations are in parallel (I believe).
 				{
 					let num_balls = arrayLength(&output);
 					if(global_id.x >= num_balls) {
+						// Overdispatched!
+						// Set position to static in the center, so we know something is wrong
+
+						// Loop and set every element to the center
+						for (var i = 0u; i < num_balls; i = i + 1u) {
+							// output[i].position = vec2<f32>(scene.width / 2.0, scene.height / 2.0);
+							output[i].position = vec2<f32>(64.0, 64.0);
+						}
+
+						// This tame version only seems to be noticeable when you dispatch an absurdly disproportionate
+						// amount of workgroups.
+						// output[0].position = vec2<f32>(scene.width / 2.0, scene.height / 2.0);
 						return;
 					}
+
+
+					// Actual normal logic
 
 					let gx = global_id.x;
 
@@ -195,13 +235,16 @@ try {
 			bindGroupLayouts: [bindGroupLayout],
 		}),
 		compute: {
-			module,
+			module: shaderModule,
 			entryPoint: entryPointName,
 		},
 	});
 
 
 	let lastPerf = 0;
+
+
+
 	function computeFrame() {
 		const computeFrameStart = performance.now();
 
@@ -209,7 +252,9 @@ try {
 		const passEncoder = commandEncoder.beginComputePass();
 		passEncoder.setPipeline(pipeline);
 		passEncoder.setBindGroup(0, bindGroup);
-		passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE / workGroupSize)); // Math.ceil(1000 / 64) = 16
+
+
+		passEncoder.dispatchWorkgroups(workgroupCountX, workgroupCountY, workgroupCountZ);
 		passEncoder.end();
 
 		commandEncoder.copyBufferToBuffer(
@@ -224,16 +269,18 @@ try {
 		device.queue.writeBuffer(inputGPUBuffer, 0, inputBalls);
 		device.queue.submit([commands]);
 
-
-		return stagingGPUBuffer.mapAsync(
+		stagingGPUBuffer.mapAsync(
 			GPUMapMode.READ,
 			0, // Offset
 			BUFFER_SIZE // Length
-		).then(() => {
+		);
+
+
+		return device.queue.onSubmittedWorkDone().then(() => {
 
 			const mapAsyncPromiseResolved = performance.now();
 
-			console.log('mapAsync took ' + (mapAsyncPromiseResolved - computeFrameStart).toFixed(2) + 'ms');
+			// console.log('mapAsync took ' + (mapAsyncPromiseResolved - computeFrameStart).toFixed(2) + 'ms');
 
 
 			// https://developer.mozilla.org/en-US/docs/Web/API/GPUBuffer

@@ -16,7 +16,9 @@ try {
 	// ------------------------------------------------
 	// CREATE BIND GROUP + LAYOUT
 	// ------------------------------------------------
-	const BUFFER_SIZE = 1000;
+	const workgroupSize = 64;
+	const dispatchXCount = 16;
+	const BUFFER_SIZE = workgroupSize * dispatchXCount * Float32Array.BYTES_PER_ELEMENT;
 	const bindGroupLayout = device.createBindGroupLayout({
 		entries: [{
 			binding: 1,
@@ -54,11 +56,23 @@ try {
 	const passEncoder = commandEncoder.beginComputePass();
 	const module = device.createShaderModule({
 		code: `
-				@compute @workgroup_size(64)
-				fn main() {
-				// Pointless!
-				}
-			`,
+			@group(0) @binding(1)
+			var<storage, read_write> output: array<f32>;
+
+			@compute @workgroup_size(${workgroupSize})
+			fn main(
+
+			@builtin(global_invocation_id)
+			global_id : vec3<u32>,
+
+			@builtin(local_invocation_id)
+			local_id : vec3<u32>,
+
+			) {
+			output[global_id.x] =
+				f32(global_id.x) * 1000. + f32(local_id.x);
+			}
+		`,
 	});
 
 	const pipeline = device.createComputePipeline({
@@ -72,7 +86,7 @@ try {
 	});
 	passEncoder.setPipeline(pipeline);
 	passEncoder.setBindGroup(0, bindGroup);
-	passEncoder.dispatchWorkgroups(Math.ceil(BUFFER_SIZE/64));
+	passEncoder.dispatchWorkgroups(dispatchXCount);
 	passEncoder.end();
 	// ------------------------------------------------
 	// ------------------------------------------------
@@ -126,6 +140,7 @@ try {
 		stagingGPUBuffer.unmap();
 
 		// ANOTHER copy? Actually, I don't think it copies it, I think it's just a wrapper
+
 		console.log(new Float32Array(data));
 	});
 
