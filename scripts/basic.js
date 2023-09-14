@@ -22,13 +22,16 @@ try {
 	// CREATE BIND GROUP + LAYOUT
 	// ------------------------------------------------
 
-	const testOverDispatch = true;
-
 	const workgroupSize = 64;
+
+	const testOverDispatch = true;
+	const testOverdispatchWithinWorkGroup = true;
+	const testSubtractionAmount = testOverdispatchWithinWorkGroup ? 1 : workgroupSize + 1;
+
 	// const dispatchXCount = 16;
 	const numElements = 1024; // Just happens to be a multiple of workgroupSize for testing
 
-	const numElementsTest = testOverDispatch ? numElements - (workgroupSize + 1) : numElements;
+	const numElementsTest = testOverDispatch ? numElements - testSubtractionAmount : numElements;
 
 	const BUFFER_SIZE = numElementsTest * Float32Array.BYTES_PER_ELEMENT;
 	const bindGroupLayout = device.createBindGroupLayout({
@@ -66,6 +69,8 @@ try {
 	// ------------------------------------------------
 	const commandEncoder = device.createCommandEncoder();
 	const passEncoder = commandEncoder.beginComputePass();
+	const lastElementIndex = numElementsTest - 1;
+	log({ lastElementIndex });
 	const module = device.createShaderModule({
 		code: `
 			@group(0) @binding(1)
@@ -85,16 +90,33 @@ try {
 			{
 				// It seems like WebGPU will automatically not set output values outside the max, at least within
 				// the same workgroup.
-				if (global_id.x >= ${numElementsTest}) {
+				if (global_id.x > ${lastElementIndex}) {
+
 					output[global_id.x] = 1.2345;
+					// I do wonder what the above is doing within a same group. Given this block of code is accessed,
+					// it seems like it's detecting it's outside, and just not setting it.
+					// Within another work group, it will set it to end of the output buffer though, just not
+					// within the same work group.
+
 
 					// It will run the code though, because you can see the result here:
-					// output[0] = 1.2345;
+					output[0] = 1.2345;
+
+					// And bizzarely, this won't be set! Maybe because *we can't set data inside the same workgroup
+					// when global_id.x is outside the bounds?*
+					output[${lastElementIndex}] = 1.2345;
+
+					output[1022] = 1.2345;
+
+
+					// Maybe it is just because API authors only demand workgroup alignment, but not perfect alignment
+					// Also, maybe the idea is that other workgroups should be allowed to write to others' memory
 
 					return;
-				}
+				} else {
+					output[global_id.x] = f32(global_id.x) * 1000. + f32(local_id.x);
 
-				output[global_id.x] = f32(global_id.x) * 1000. + f32(local_id.x);
+				}
 			}
 		`,
 	});
