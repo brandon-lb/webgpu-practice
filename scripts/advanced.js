@@ -1,6 +1,12 @@
 
 // Following https://surma.dev/things/webgpu/
 
+
+
+const log = (...args) => {
+	console.log('advanced.js: ', ...args);
+}
+
 const canvasEl = document.getElementById('advanced-canvas');
 const outputEl = document.getElementById('errors-advanced');
 
@@ -31,7 +37,7 @@ try {
 
 		label = label ? label + ' returning' : 'Returning';
 
-		// console.log(label + ` ${val} for lower:${lower}, upper:${upper}`);
+		// log(label + ` ${val} for lower:${lower}, upper:${upper}`);
 
 		return val;
 	}
@@ -44,10 +50,10 @@ try {
 	const workgroupCountX = 2;//Math.ceil(NUM_BALLS / workGroupDimensions[0]);
 	const workgroupCountY = 1;
 	const workgroupCountZ = 1;
-	console.log({ workgroupCountX, workgroupCountY, workgroupCountZ })
+	log({ workgroupCountX, workgroupCountY, workgroupCountZ })
 
 
-	console.log('Buffer size: ' + BUFFER_SIZE);
+	log('Buffer size: ' + BUFFER_SIZE);
 
 	let inputBalls = new Float32Array(new ArrayBuffer(BUFFER_SIZE));
 	for (let i = 0; i < NUM_BALLS; i++) {
@@ -280,7 +286,7 @@ try {
 
 			const mapAsyncPromiseResolved = performance.now();
 
-			// console.log('mapAsync took ' + (mapAsyncPromiseResolved - computeFrameStart).toFixed(2) + 'ms');
+			// log('mapAsync took ' + (mapAsyncPromiseResolved - computeFrameStart).toFixed(2) + 'ms');
 
 
 			// https://developer.mozilla.org/en-US/docs/Web/API/GPUBuffer
@@ -298,7 +304,7 @@ try {
 			const newBalls = new Float32Array(newData);
 
 
-			// console.log(newBalls);
+			// log(newBalls);
 
 			// Feedback
 			inputBalls = newBalls;
@@ -313,7 +319,7 @@ try {
 	let lastPerformanceNow = performance.now();
 	function run () {
 		window.requestAnimationFrame(() => {
-			// console.log(performance.now() - lastPerformanceNow);
+			// log(performance.now() - lastPerformanceNow);
 			outputEl.textContent = lastPerf.toFixed(2) + 'ms';
 
 			// Hey ChatGPT, I want to put frame() here, but when I do, it complains about the fact that I apparently

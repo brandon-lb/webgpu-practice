@@ -1,6 +1,11 @@
 
 // Following https://surma.dev/things/webgpu/
 
+
+const log = (...args) => {
+	console.log('basic.js: ', ...args);
+}
+
 try {
 	if (!navigator.gpu) throw Error("WebGPU not supported.");
 
@@ -16,9 +21,16 @@ try {
 	// ------------------------------------------------
 	// CREATE BIND GROUP + LAYOUT
 	// ------------------------------------------------
+
+	const testOverDispatch = true;
+
 	const workgroupSize = 64;
-	const dispatchXCount = 16;
-	const BUFFER_SIZE = workgroupSize * dispatchXCount * Float32Array.BYTES_PER_ELEMENT;
+	// const dispatchXCount = 16;
+	const numElements = 1024; // Just happens to be a multiple of workgroupSize for testing
+
+	const numElementsTest = testOverDispatch ? numElements - (workgroupSize + 1) : numElements;
+
+	const BUFFER_SIZE = numElementsTest * Float32Array.BYTES_PER_ELEMENT;
 	const bindGroupLayout = device.createBindGroupLayout({
 		entries: [{
 			binding: 1,
@@ -68,9 +80,21 @@ try {
 			@builtin(local_invocation_id)
 			local_id : vec3<u32>,
 
-			) {
-			output[global_id.x] =
-				f32(global_id.x) * 1000. + f32(local_id.x);
+			)
+
+			{
+				// It seems like WebGPU will automatically not set output values outside the max, at least within
+				// the same workgroup.
+				if (global_id.x >= ${numElementsTest}) {
+					output[global_id.x] = 1.2345;
+
+					// It will run the code though, because you can see the result here:
+					// output[0] = 1.2345;
+
+					return;
+				}
+
+				output[global_id.x] = f32(global_id.x) * 1000. + f32(local_id.x);
 			}
 		`,
 	});
@@ -86,6 +110,13 @@ try {
 	});
 	passEncoder.setPipeline(pipeline);
 	passEncoder.setBindGroup(0, bindGroup);
+	const dispatchXCount = Math.ceil(numElements / workgroupSize);
+	log({
+		dispatchXCount,
+		workgroupSize,
+		numElements,
+		totalWorkItemCount: dispatchXCount * workgroupSize,
+	});
 	passEncoder.dispatchWorkgroups(dispatchXCount);
 	passEncoder.end();
 	// ------------------------------------------------
@@ -141,7 +172,7 @@ try {
 
 		// ANOTHER copy? Actually, I don't think it copies it, I think it's just a wrapper
 
-		console.log(new Float32Array(data));
+		log(new Float32Array(data));
 	});
 
 } catch (e) {
